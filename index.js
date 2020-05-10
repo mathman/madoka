@@ -1,5 +1,5 @@
 const express = require('express');
-
+const bodyParser = require('body-parser');
 const Bluetooth = require('./lib/Bluetooth');
 
 function delay(ms) {
@@ -18,11 +18,41 @@ const port = args[0];
 
     var app = express();
     
+    app.use(bodyParser.json());
+    app.use(bodyParser.urlencoded({ extended: true }));
+    
     bluetooth = new Bluetooth();
     
     bluetooth.init();
     
-    app.get('/device/:devicemac/fanspeed', async function(req, res) {
+    app.get('/device/:devicemac/all', async function(req, res) {
+
+        if (inProgess == false) {
+            
+            inProgess = true;
+        }
+        else {
+            
+            res.status(503);
+            res.send('Error');
+            return;
+        }
+        await bluetooth.startBluetooth(req.params.devicemac);
+        await delay(6000);
+        let message = await bluetooth.sendGetAllInfos();
+        if (!message) {
+            
+            res.status(504);
+            res.send('Error');
+        }
+        else {
+            
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(message));
+        }
+        inProgess = false;
+    })
+    .get('/device/:devicemac/fanspeed', async function(req, res) {
 
         if (inProgess == false) {
             
@@ -49,7 +79,7 @@ const port = args[0];
         }
         inProgess = false;
     })
-    .get('/device/:devicemac/fanspeed/heat/:value', async function(req, res) {
+    .patch('/device/:devicemac/fanspeed', async function(req, res) {
 
         if (inProgess == false) {
             
@@ -63,34 +93,13 @@ const port = args[0];
         }
         await bluetooth.startBluetooth(req.params.devicemac);
         await delay(6000);
-        let state = await bluetooth.sendSetHeatFanSpeed(req.params.value);
-		if (!state) {
-            
-            res.status(504);
-            res.send('Error');
+        let state = false;
+        if (req.body.type === 'heating') {
+            state = await bluetooth.sendSetHeatFanSpeed(req.body.value);
         }
-        else {
-            
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify("success"));
+        else if (req.body.type === 'cooling') {
+            state = await bluetooth.sendSetColdFanSpeed(req.body.value);
         }
-        inProgess = false;
-    })
-	.get('/device/:devicemac/fanspeed/cold/:value', async function(req, res) {
-
-        if (inProgess == false) {
-            
-            inProgess = true;
-        }
-        else {
-            
-            res.status(503);
-            res.send('Error');
-            return;
-        }
-        await bluetooth.startBluetooth(req.params.devicemac);
-        await delay(6000);
-        let state = await bluetooth.sendSetColdFanSpeed(req.params.value);
 		if (!state) {
             
             res.status(504);
@@ -130,7 +139,7 @@ const port = args[0];
         }
         inProgess = false;
     })
-	.get('/device/:devicemac/setpoint/heat/:value', async function(req, res) {
+	.patch('/device/:devicemac/setpoint', async function(req, res) {
 
         if (inProgess == false) {
             
@@ -144,34 +153,13 @@ const port = args[0];
         }
         await bluetooth.startBluetooth(req.params.devicemac);
         await delay(6000);
-        let state = await bluetooth.sendSetHeatSetpoint(req.params.value);
-		if (!state) {
-            
-            res.status(504);
-            res.send('Error');
+        let state = false;
+        if (req.body.type === 'heating') {
+            state = await bluetooth.sendSetHeatSetpoint(req.body.value);
         }
-        else {
-            
-            res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify("success"));
+        else if (req.body.type === 'cooling') {
+            state = await bluetooth.sendSetColdSetpoint(req.body.value);
         }
-        inProgess = false;
-    })
-	.get('/device/:devicemac/setpoint/cold/:value', async function(req, res) {
-
-        if (inProgess == false) {
-            
-            inProgess = true;
-        }
-        else {
-            
-            res.status(503);
-            res.send('Error');
-            return;
-        }
-        await bluetooth.startBluetooth(req.params.devicemac);
-        await delay(6000);
-        let state = await bluetooth.sendSetColdSetpoint(req.params.value);
 		if (!state) {
             
             res.status(504);
@@ -211,7 +199,7 @@ const port = args[0];
         }
         inProgess = false;
     })
-    .get('/device/:devicemac/operationmode/set/:value', async function(req, res) {
+    .patch('/device/:devicemac/operationmode', async function(req, res) {
 
         if (inProgess == false) {
             
@@ -225,7 +213,7 @@ const port = args[0];
         }
         await bluetooth.startBluetooth(req.params.devicemac);
         await delay(6000);
-        let state = await bluetooth.sendSetOperationMode(req.params.value);
+        let state = await bluetooth.sendSetOperationMode(req.body.value);
 		if (!state) {
             
             res.status(504);
@@ -265,7 +253,7 @@ const port = args[0];
         }
         inProgess = false;
     })
-    .get('/device/:devicemac/settingstatus/set/:value', async function(req, res) {
+    .patch('/device/:devicemac/settingstatus', async function(req, res) {
 
         if (inProgess == false) {
             
@@ -279,7 +267,7 @@ const port = args[0];
         }
         await bluetooth.startBluetooth(req.params.devicemac);
         await delay(6000);
-        let state = await bluetooth.sendSetSettingStatus(req.params.value);
+        let state = await bluetooth.sendSetSettingStatus(req.body.value);
 		if (!state) {
             
             res.status(504);
